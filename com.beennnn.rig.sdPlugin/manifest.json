@@ -1,0 +1,56 @@
+{
+	"$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+	"Name": "Rig",
+	"UUID": "com.beennnn.rig",
+	"Version": "0.1.0.0",
+	"Author": "Beennnn",
+	"URL": "https://github.com/Beennnn/streamdeck-rig",
+	"Description": "Show your live-rig readiness (readyset) on a Stream Deck: a status key, one key per active problem, and a 'fix all' key. Press a problem to run its fix. Talks only to the local rig dashboard on 127.0.0.1:8765.",
+	"Category": "Rig",
+	"CategoryIcon": "imgs/plugin/category",
+	"Icon": "imgs/plugin/icon",
+	"SDKVersion": 3,
+	"CodePath": "bin/plugin.js",
+	"Nodejs": {
+		"Version": "20"
+	},
+	"Software": {
+		"MinimumVersion": "6.9"
+	},
+	"OS": [
+		{
+			"Platform": "mac",
+			"MinimumVersion": "12"
+		}
+	],
+	"Actions": [
+		{
+			"Name": "Rig status",
+			"UUID": "com.beennnn.rig.status",
+			"Icon": "imgs/actions/status/icon",
+			"Tooltip": "Overall rig readiness. Press to open the dashboard.",
+			"Controllers": ["Keypad"],
+			"States": [{ "Image": "imgs/actions/status/key", "TitleAlignment": "bottom" }],
+			"DisableAutomaticStates": true
+		},
+		{
+			"Name": "Rig problem",
+			"UUID": "com.beennnn.rig.slot",
+			"Icon": "imgs/actions/slot/icon",
+			"Tooltip": "Shows the Nth active problem; press to run its fix.",
+			"PropertyInspectorPath": "ui/slot.html",
+			"Controllers": ["Keypad"],
+			"States": [{ "Image": "imgs/actions/slot/key", "TitleAlignment": "bottom" }],
+			"DisableAutomaticStates": true
+		},
+		{
+			"Name": "Rig fix all",
+			"UUID": "com.beennnn.rig.fixall",
+			"Icon": "imgs/actions/fixall/icon",
+			"Tooltip": "Run every available fix at once.",
+			"Controllers": ["Keypad"],
+			"States": [{ "Image": "imgs/actions/fixall/key", "TitleAlignment": "bottom" }],
+			"DisableAutomaticStates": true
+		}
+	]
+}
