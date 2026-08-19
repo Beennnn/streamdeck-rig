@@ -5,9 +5,11 @@ import streamDeck from "@elgato/streamdeck";
 import { StatusAction } from "./actions/status";
 import { SlotAction } from "./actions/slot";
 import { FixAllAction } from "./actions/fixall";
+import { SpectrumAction } from "./actions/spectrum";
 
 streamDeck.actions.registerAction(new StatusAction());
 streamDeck.actions.registerAction(new SlotAction());
 streamDeck.actions.registerAction(new FixAllAction());
+streamDeck.actions.registerAction(new SpectrumAction());
 
 streamDeck.connect();

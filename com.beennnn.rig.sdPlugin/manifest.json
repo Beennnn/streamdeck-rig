@@ -2,7 +2,7 @@
 	"$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
 	"Name": "Rig",
 	"UUID": "com.beennnn.rig",
-	"Version": "0.1.0.0",
+	"Version": "0.2.0.0",
 	"Author": "Beennnn",
 	"URL": "https://github.com/Beennnn/streamdeck-rig",
 	"Description": "Show your live-rig readiness (readyset) on a Stream Deck: a status key, one key per active problem, and a 'fix all' key. Press a problem to run its fix. Talks only to the local rig dashboard on 127.0.0.1:8765.",
@@ -29,8 +29,15 @@
 			"UUID": "com.beennnn.rig.status",
 			"Icon": "imgs/actions/status/icon",
 			"Tooltip": "Overall rig readiness. Press to open the dashboard.",
-			"Controllers": ["Keypad"],
-			"States": [{ "Image": "imgs/actions/status/key", "TitleAlignment": "bottom" }],
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/status/key",
+					"TitleAlignment": "bottom"
+				}
+			],
 			"DisableAutomaticStates": true
 		},
 		{
@@ -39,8 +46,15 @@
 			"Icon": "imgs/actions/slot/icon",
 			"Tooltip": "Shows the Nth active problem; press to run its fix.",
 			"PropertyInspectorPath": "ui/slot.html",
-			"Controllers": ["Keypad"],
-			"States": [{ "Image": "imgs/actions/slot/key", "TitleAlignment": "bottom" }],
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/slot/key",
+					"TitleAlignment": "bottom"
+				}
+			],
 			"DisableAutomaticStates": true
 		},
 		{
@@ -48,8 +62,31 @@
 			"UUID": "com.beennnn.rig.fixall",
 			"Icon": "imgs/actions/fixall/icon",
 			"Tooltip": "Run every available fix at once.",
-			"Controllers": ["Keypad"],
-			"States": [{ "Image": "imgs/actions/fixall/key", "TitleAlignment": "bottom" }],
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/fixall/key",
+					"TitleAlignment": "bottom"
+				}
+			],
+			"DisableAutomaticStates": true
+		},
+		{
+			"Name": "Rig spectrum",
+			"UUID": "com.beennnn.rig.spectrum",
+			"Icon": "imgs/actions/spectrum/icon",
+			"Tooltip": "Audio spectrum of the rig's stream: bars per band, key tinted by level. Press to open the dashboard.",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/spectrum/key",
+					"TitleAlignment": "bottom"
+				}
+			],
 			"DisableAutomaticStates": true
 		}
 	]

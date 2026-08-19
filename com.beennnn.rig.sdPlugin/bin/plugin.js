@@ -9175,11 +9175,11 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 
 // Tiny client for the readyset dashboard API (http://127.0.0.1:8765), plus a key-image
 // helper. The plugin only ever talks to localhost — the rig runs on the same Mac.
-const BASE = process.env.RIG_URL || "http://127.0.0.1:8765";
+const BASE$1 = process.env.RIG_URL || "http://127.0.0.1:8765";
 /** Fetch the current state; null on any error (rig off / unreachable). */
 async function fetchState() {
     try {
-        const r = await fetch(`${BASE}/api/state`, { signal: AbortSignal.timeout(3000) });
+        const r = await fetch(`${BASE$1}/api/state`, { signal: AbortSignal.timeout(3000) });
         const d = await r.json();
         const problems = (d.items ?? [])
             .filter((it) => it.status === "fail" || it.status === "warn")
@@ -9194,7 +9194,7 @@ async function fetchState() {
 /** Apply one check's fix (POST /api/fix). Silent on error. */
 async function applyFix(key) {
     try {
-        await fetch(`${BASE}/api/fix`, {
+        await fetch(`${BASE$1}/api/fix`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ key }),
@@ -9207,7 +9207,7 @@ async function applyFix(key) {
 }
 /** Open the web dashboard in the default browser. */
 function openDashboard() {
-    exec(`open ${BASE}`);
+    exec(`open ${BASE$1}`);
 }
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 /** Build a 144×144 SVG key image (coloured background + up to 3 text lines) as a data URI. */
@@ -9235,33 +9235,33 @@ function shortLabel(label) {
 
 // One shared poll loop for the whole plugin: fetch /api/state every 2 s and push it to every
 // visible action. The timer only runs while at least one key is on the deck.
-const listeners = new Set();
-let timer = null;
+const listeners$1 = new Set();
+let timer$1 = null;
 let last = null;
-async function tick() {
+async function tick$1() {
     last = await fetchState();
-    for (const l of listeners)
+    for (const l of listeners$1)
         l(last);
 }
 function subscribe(l) {
-    listeners.add(l);
+    listeners$1.add(l);
     if (last)
         l(last);
-    if (!timer) {
-        timer = setInterval(tick, 2000);
-        void tick();
+    if (!timer$1) {
+        timer$1 = setInterval(tick$1, 2000);
+        void tick$1();
     }
 }
 function unsubscribe(l) {
-    listeners.delete(l);
-    if (listeners.size === 0 && timer) {
-        clearInterval(timer);
-        timer = null;
+    listeners$1.delete(l);
+    if (listeners$1.size === 0 && timer$1) {
+        clearInterval(timer$1);
+        timer$1 = null;
     }
 }
 /** Force an immediate refresh (e.g. right after applying a fix). */
 function refreshSoon() {
-    setTimeout(() => void tick(), 600);
+    setTimeout(() => void tick$1(), 600);
 }
 
 /**
@@ -9437,10 +9437,152 @@ let FixAllAction = (() => {
     return _classThis;
 })();
 
+// Client for the dashboard's audio spectrum (`/api/audio/spectrum`), plus the key drawing.
+//
+// Its own poll loop, separate from hub.ts: the rig state is worth re-reading every 2 s, a
+// spectrum is worth nothing at that rate. The loop only runs while a spectrum key is on the
+// deck — and the server side stops capturing by itself once nobody asks, so a key removed
+// from the deck releases the audio device without anyone having to say so.
+const BASE = process.env.RIG_URL || "http://127.0.0.1:8765";
+/** ~8 refreshes per second. Faster looks no better on a 96 px key and just burns image
+ *  encoding; slower turns a bar meter into a slideshow. */
+const PERIOD_MS = 120;
+async function fetchSpectrum() {
+    try {
+        const r = await fetch(`${BASE}/api/audio/spectrum`, { signal: AbortSignal.timeout(2000) });
+        const d = await r.json();
+        return {
+            available: !!d.available,
+            rms: d.rms ?? 0,
+            peak: d.peak ?? 0,
+            bands: Array.isArray(d.bands) ? d.bands : [],
+            reason: d.reason,
+        };
+    }
+    catch {
+        return null;
+    }
+}
+const listeners = new Set();
+let timer = null;
+async function tick() {
+    const s = await fetchSpectrum();
+    for (const l of listeners)
+        l(s);
+}
+function subscribeSpectrum(l) {
+    listeners.add(l);
+    if (!timer) {
+        timer = setInterval(() => void tick(), PERIOD_MS);
+        void tick();
+    }
+}
+function unsubscribeSpectrum(l) {
+    listeners.delete(l);
+    if (listeners.size === 0 && timer) {
+        clearInterval(timer);
+        timer = null;
+    }
+}
+/** Volume → background colour: grey when silent, then green, amber, red when it's hot.
+ *  The colour is the thing you catch without looking, so it carries the level, not detail. */
+function volumeColor(rms) {
+    const v = Math.min(1, Math.sqrt(rms) * 2.2); // même compression que les barres
+    if (v < 0.04)
+        return "#2b2b2e"; // silence : gris, pas noir — la touche existe
+    if (v < 0.45)
+        return "#1f6d33";
+    if (v < 0.75)
+        return "#b07d18";
+    return "#b3291f";
+}
+/**
+ * A 144×144 key: bars for the bands, background for the level.
+ *
+ * Levels are square-rooted before drawing. A linear scale spends most of its height on the
+ * loudest instants and leaves everything else flat against the floor — the ear doesn't work
+ * that way, and neither should a meter you glance at while playing.
+ */
+function spectrumImage(s) {
+    const W = 144, H = 144, PAD = 8;
+    if (!s || !s.available) {
+        const msg = !s ? "hors ligne" : "démarrage";
+        return uri(`<rect width="${W}" height="${H}" rx="20" fill="#2b2b2e"/>` +
+            `<text x="72" y="70" font-family="-apple-system,Helvetica,Arial" font-size="20" fill="#8a8a8f" text-anchor="middle">spectre</text>` +
+            `<text x="72" y="94" font-family="-apple-system,Helvetica,Arial" font-size="15" fill="#6a6a6f" text-anchor="middle">${msg}</text>`);
+    }
+    const bands = s.bands.length ? s.bands : new Array(16).fill(0);
+    const n = bands.length;
+    const usable = W - PAD * 2;
+    const slot = usable / n;
+    const bw = Math.max(3, slot - 2);
+    let bars = "";
+    for (let i = 0; i < n; i++) {
+        const v = Math.min(1, Math.sqrt(Math.max(0, bands[i])) * 1.6);
+        const h = Math.max(2, v * (H - PAD * 2));
+        const x = PAD + i * slot + (slot - bw) / 2;
+        bars += `<rect x="${x.toFixed(1)}" y="${(H - PAD - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" fill="#f2f2f2" fill-opacity="0.92"/>`;
+    }
+    return uri(`<rect width="${W}" height="${H}" rx="20" fill="${volumeColor(s.rms)}"/>${bars}`);
+}
+function uri(inner) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144">${inner}</svg>`;
+    return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+}
+
+/**
+ * Audio spectrum — bars for the bands, and the whole key tinted by the level, so the volume
+ * is readable from the corner of the eye while the bars carry the detail.
+ *
+ * Reads `/api/audio/spectrum` on the rig dashboard. That endpoint starts capturing on the
+ * first request and stops on its own once nobody asks, so pulling the key off the deck
+ * releases the audio device — nothing here has to remember to shut anything down.
+ *
+ * Press it to open the dashboard.
+ */
+let SpectrumAction = (() => {
+    let _classDecorators = [action({ UUID: "com.beennnn.rig.spectrum" })];
+    let _classDescriptor;
+    let _classExtraInitializers = [];
+    let _classThis;
+    let _classSuper = SingletonAction;
+    (class extends _classSuper {
+        static { _classThis = this; }
+        static {
+            const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
+            __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+            _classThis = _classDescriptor.value;
+            if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+            __runInitializers(_classThis, _classExtraInitializers);
+        }
+        visible = new Map();
+        listener = (s) => this.render(s);
+        onWillAppear(ev) {
+            this.visible.set(ev.action.id, ev.action);
+            subscribeSpectrum(this.listener);
+        }
+        onWillDisappear(ev) {
+            this.visible.delete(ev.action.id);
+            if (this.visible.size === 0)
+                unsubscribeSpectrum(this.listener);
+        }
+        onKeyDown(_ev) {
+            openDashboard();
+        }
+        render(s) {
+            const img = spectrumImage(s);
+            for (const a of this.visible.values())
+                void a.setImage(img);
+        }
+    });
+    return _classThis;
+})();
+
 // Entry point for the Rig plugin (com.beennnn.rig): show readyset readiness on the deck and
 // one-tap the fixes. Talks only to the local dashboard at 127.0.0.1:8765.
 streamDeck.actions.registerAction(new StatusAction());
 streamDeck.actions.registerAction(new SlotAction());
 streamDeck.actions.registerAction(new FixAllAction());
+streamDeck.actions.registerAction(new SpectrumAction());
 streamDeck.connect();
 //# sourceMappingURL=plugin.js.map
